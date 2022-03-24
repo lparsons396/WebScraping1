@@ -45,8 +45,15 @@ class Data:
             if content['name'].lower() == country.lower(): #this means we don't care about capitalisation
                 return content
 
-data = Data(API_KEY, PROJECT_TOKEN)
-print(data.get_country("UK"))
+
+    def get_list_of_countries(self):
+        countries = []
+        for country in self.data['country']:
+            countries.append(country['name'].lower()) #get list of countries, lower case
+        return countries
+
+#data = Data(API_KEY, PROJECT_TOKEN)
+#print(data.get_list_of_countries())
 
 
 
@@ -62,7 +69,7 @@ def get_audio():
         said = ""
 
         try:
-            said = r.recognize_google(audio) #this processes our speech as text, it doens't always work perfecly, hence try except
+            said = r.recognize_google(audio) #this processes our speech as text, it doesn't always work perfecly, hence try except
 
         except Exception as e:
             print("Exception:", str(e))
@@ -71,12 +78,44 @@ def get_audio():
 
 def main():
     print("Starting Program")
-
+    data = Data(API_KEY, PROJECT_TOKEN)
     END_PHRASE = "stop" #if we hear stop, it'll end program - see below
+
+
+    #recognise differnt things people could say, [\w\s] = any number of words
+    TOTAL_PATTERNS = {
+        
+        re.compile("[\w\s]+ total [\w\s]+ cases"): data.get_total_cases,
+        re.compile("[\w\s]+ total cases"): data.get_total_cases,
+        re.compile("[\w\s]+ total [\w\s]+ deaths"): data.get_total_deaths,
+        re.compile("[\w\s]+ total deaths"): data.get_total_deaths,
+
+        re.compile("total [\w\s]+ cases"): data.get_total_cases,
+        re.compile("total cases"): data.get_total_cases,
+        re.compile("total [\w\s]+ deaths"): data.get_total_deaths,
+        re.compile("total deaths"): data.get_total_deaths,
+    }
 
     while True:
         print("Listening...")
         text = get_audio()
+        print(text)
+        result = None
 
-        if text.find(END_PHRASE): #stop loop
+        for pattern, func in TOTAL_PATTERNS.items():
+            if pattern.match(text):
+                result = func()
+                break
+            ## this above says, we have a dictionary made up of pattern:func key value pairs.
+            # search through them all and see if they match the text (regex re has a match function)
+            # if so, we efine our result as this function, break loop an below we'll call it
+
+        if result:
+            speak(result)
+
+
+        if text.find(END_PHRASE) != -1: #stop loop
+            print("Exit")
             break
+
+main()
